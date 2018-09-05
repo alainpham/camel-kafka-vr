@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:cxf="http://camel.apache.org/schema/cxf"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd        http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd        http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd        http://camel.apache.org/schema/cxf http://camel.apache.org/schema/cxf/camel-cxf.xsd        ">
+	<bean class="org.apache.camel.impl.MemoryStateRepository"
+		id="repoState" init-method="doStart" />
+
+	<bean id="shutdownStrategy"
+		class="org.apache.camel.impl.DefaultShutdownStrategy">
+		<property name="timeout" value="1" />
+	</bean>
+
+	<camelContext id="camel-kafka-vr"
+		xmlns="http://camel.apache.org/schema/spring">
+
+		<rest path="/restsvc">
+			<get uri="/ping">
+				<route>
+					<setBody>
+						<method ref="myTransformer" />
+					</setBody>
+				</route>
+			</get>
+		</rest>
+		<rest path="/messageOperations">
+			<post uri="/sendMsg">
+				<param name="number" type="header" />
+				<route>
+					<setBody>
+						<simple>${header.number}</simple>
+					</setBody>
+					<to uri="{{kafka.endpoint.standard}}" />
+					<setBody>
+						<method ref="processSendRequest" />
+					</setBody>
+				</route>
+			</post>
+
+			<get uri="/getLastOffset" bindingMode="off">
+				<route>
+					<transform>
+						<method ref="helper" method="endOffSet()"></method>
+					</transform>
+					<setBody>
+						<simple>{"${properties:kafka.topic}": ${body}}</simple>
+					</setBody>
+				</route>
+			</get>
+		</rest>
+
+		<rest path="/consumeInReverse" bindingMode="off">
+			<get uri="/startReverseConsumer">
+				<to uri="direct:start-reverse-consume"></to>
+			</get>
+		</rest>
+
+		<rest path="/consumeFromBeginning" bindingMode="off">
+			<get uri="/startFromBeginningConsumer">
+				<to uri="direct:start-from-beginning-consume"></to>
+			</get>
+
+			<get uri="/stopFromBeginningConsumer">
+				<to uri="direct:stop-from-beginning-consume"></to>
+			</get>
+		</rest>
+
+
+		<route id="standard-kafka-consumer">
+			<from uri="{{kafka.endpoint.standard}}" />
+			<log
+				message="got message: 
+			${body} time: ${header.kafka.TIMESTAMP} partition: ${header.kafka.PARTITION} 
+			offset: ${header.kafka.OFFSET}" />
+		</route>
+
+		<route autoStartup="false" id="from-start-kafka-consumer">
+			<from uri="{{kafka.endpoint.fromstart}}" />
+			<log
+				message="got message: 
+			${body} time: ${header.kafka.TIMESTAMP} partition: ${header.kafka.PARTITION} 
+			offset: ${header.kafka.OFFSET}" />
+		</route>
+
+
+		<route autoStartup="false" id="reverse-kafka-consumer">
+			<from id="from-kafka" uri="{{kafka.endpoint.reverse}}" />
+			<log id="_log1"
+				message="got message: 
+			${body} time: ${header.kafka.TIMESTAMP} partition: ${header.kafka.PARTITION} 
+			offset: ${header.kafka.OFFSET}" />
+			<setHeader headerName="kafkaMyDate" id="_setHeader2">
+				<method ref="helper"
+					method="dateFromTs(${header.kafka.TIMESTAMP})"></method>
+			</setHeader>
+			<log id="_log2" message="mydate: ${header.kafkaMyDate}" />
+			<bean id="_bean1" method="decrementOffset" ref="helper" />
+		</route>
+
+		<route id="start-reverse-consume">
+			<from id="_from1" uri="direct:start-reverse-consume" />
+			<log id="_log3" message="only running once !!!" />
+			<setHeader headerName="lastOffset">
+				<method ref="helper" method="reverseOffset()" />
+			</setHeader>
+			<log message="${header.lastOffset} ${header.lastOffset.class}" />
+			<setBody>
+				<constant></constant>
+			</setBody>
+			<to id="_to1"
+				uri="language:simple:${bean:repoState.setState('test/0',${header.lastOffset})}?transform=false" />
+			<log id="_log4"
+				message="state is: ${bean:repoState.getState('test/0')}" />
+			<to id="_to2"
+				uri="controlbus:route?routeId=reverse-kafka-consumer&amp;action=start" />
+			<setBody>
+				<constant>{"status" : "started"}</constant>
+			</setBody>
+		</route>
+
+		<route id="start-from-beginning-consume">
+			<from uri="direct:start-from-beginning-consume" />
+			<setBody>
+				<constant></constant>
+			</setBody>
+			<to
+				uri="controlbus:route?routeId=from-start-kafka-consumer&amp;action=start" />
+			<setBody>
+				<constant>{"status" : "started"}</constant>
+			</setBody>
+		</route>
+		<route id="stop-from-beginning-consume">
+			<from uri="direct:stop-from-beginning-consume" />
+			<setBody>
+				<constant></constant>
+			</setBody>
+			<to
+				uri="controlbus:route?routeId=from-start-kafka-consumer&amp;action=stop&amp;async=true" />
+			<setBody>
+				<constant>{"status" : "stopped"}</constant>
+			</setBody>
+		</route>
+	</camelContext>
+</beans>
