@@ -12,14 +12,14 @@
 		<property name="timeout" value="1" />
 	</bean>
 
-	<camelContext id="camel-kafka-vr"
+	<camelContext id="camel-kafka-vr" 
 		xmlns="http://camel.apache.org/schema/spring">
 
 		<rest path="/restsvc">
 			<get uri="/ping">
 				<route>
 					<setBody>
-						<method ref="myTransformer" />
+						<method ref="myTransformer" /> 
 					</setBody>
 				</route>
 			</get>
