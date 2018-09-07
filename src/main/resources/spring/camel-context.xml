@@ -4,12 +4,17 @@
 	xmlns:cxf="http://camel.apache.org/schema/cxf"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd        http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd        http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd        http://camel.apache.org/schema/cxf http://camel.apache.org/schema/cxf/camel-cxf.xsd        ">
+	
+	
 	<bean class="org.apache.camel.impl.MemoryStateRepository"
 		id="repoState" init-method="doStart" />
 
+	<bean class="org.apache.camel.impl.MemoryStateRepository"
+		id="fromDateRepoState" init-method="doStart" />
+
 	<bean id="shutdownStrategy"
 		class="org.apache.camel.impl.DefaultShutdownStrategy">
-		<property name="timeout" value="1" />
+		<property name="timeout" value="10" />
 	</bean>
 
 	<camelContext id="camel-kafka-vr" 
@@ -37,7 +42,15 @@
 					</setBody>
 				</route>
 			</post>
+			<post uri="/getOffsetAtDateTime" type="techlab.model.GetOffsetAtDateTimeRequest" outType="techlab.model.GetOffsetAtDateTimeResponse">
+				<route>
 
+					<log message="${body.dateTime}"/>
+					<transform>
+						<method ref="helper" method="offsetAtTime(${body.dateTime})"></method>
+					</transform>
+				</route>
+			</post>
 			<get uri="/getLastOffset" bindingMode="off">
 				<route>
 					<transform>
@@ -66,41 +79,49 @@
 			</get>
 		</rest>
 
+		<rest path="/consumeFromDatetime" >
+			<post uri="/startFromDateTimeConsumer" type="techlab.model.GetOffsetAtDateTimeRequest" >
+				<to uri="direct:start-from-date-time-consume"></to>
+			</post>
+
+			<get uri="/stopFromDateTimeConsumer">
+				<to uri="direct:stop-from-date-time-consume"></to>
+			</get>
+		</rest>
+
 
 		<route id="standard-kafka-consumer">
 			<from uri="{{kafka.endpoint.standard}}" />
 			<log
-				message="got message: 
-			${body} time: ${header.kafka.TIMESTAMP} partition: ${header.kafka.PARTITION} 
-			offset: ${header.kafka.OFFSET}" />
+				message="got message: ${body} time: ${bean:helper.dateFromTs(${header.kafka.TIMESTAMP})} partition: ${header.kafka.PARTITION} offset: ${header.kafka.OFFSET}" />
 		</route>
 
 		<route autoStartup="false" id="from-start-kafka-consumer">
 			<from uri="{{kafka.endpoint.fromstart}}" />
 			<log
-				message="got message: 
-			${body} time: ${header.kafka.TIMESTAMP} partition: ${header.kafka.PARTITION} 
-			offset: ${header.kafka.OFFSET}" />
+				message="got message: ${body} time: ${bean:helper.dateFromTs(${header.kafka.TIMESTAMP})} partition: ${header.kafka.PARTITION} offset: ${header.kafka.OFFSET}" />
 		</route>
 
+		<route autoStartup="false" id="from-date-time-kafka-consumer">
+			<from uri="{{kafka.endpoint.fromDateTime}}"></from>
+			<log
+				message="got message: ${body} time: ${bean:helper.dateFromTs(${header.kafka.TIMESTAMP})} partition: ${header.kafka.PARTITION} offset: ${header.kafka.OFFSET}" />
+		</route>
 
 		<route autoStartup="false" id="reverse-kafka-consumer">
 			<from id="from-kafka" uri="{{kafka.endpoint.reverse}}" />
-			<log id="_log1"
-				message="got message: 
-			${body} time: ${header.kafka.TIMESTAMP} partition: ${header.kafka.PARTITION} 
-			offset: ${header.kafka.OFFSET}" />
-			<setHeader headerName="kafkaMyDate" id="_setHeader2">
+			<log
+				message="got message: ${body} time: ${bean:helper.dateFromTs(${header.kafka.TIMESTAMP})} partition: ${header.kafka.PARTITION} offset: ${header.kafka.OFFSET}" />
+			<setHeader headerName="kafkaMyDate" >
 				<method ref="helper"
 					method="dateFromTs(${header.kafka.TIMESTAMP})"></method>
 			</setHeader>
-			<log id="_log2" message="mydate: ${header.kafkaMyDate}" />
-			<bean id="_bean1" method="decrementOffset" ref="helper" />
+			<log  message="mydate: ${header.kafkaMyDate}" />
+			<bean  method="decrementOffset" ref="helper" />
 		</route>
 
 		<route id="start-reverse-consume">
-			<from id="_from1" uri="direct:start-reverse-consume" />
-			<log id="_log3" message="only running once !!!" />
+			<from  uri="direct:start-reverse-consume" />
 			<setHeader headerName="lastOffset">
 				<method ref="helper" method="reverseOffset()" />
 			</setHeader>
@@ -108,12 +129,10 @@
 			<setBody>
 				<constant></constant>
 			</setBody>
-			<to id="_to1"
-				uri="language:simple:${bean:repoState.setState('test/0',${header.lastOffset})}?transform=false" />
-			<log id="_log4"
+			<to uri="language:simple:${bean:repoState.setState('test/0',${header.lastOffset})}?transform=false" />
+			<log 
 				message="state is: ${bean:repoState.getState('test/0')}" />
-			<to id="_to2"
-				uri="controlbus:route?routeId=reverse-kafka-consumer&amp;action=start" />
+			<to uri="controlbus:route?routeId=reverse-kafka-consumer&amp;action=start" />
 			<setBody>
 				<constant>{"status" : "started"}</constant>
 			</setBody>
@@ -130,6 +149,7 @@
 				<constant>{"status" : "started"}</constant>
 			</setBody>
 		</route>
+
 		<route id="stop-from-beginning-consume">
 			<from uri="direct:stop-from-beginning-consume" />
 			<setBody>
@@ -141,5 +161,49 @@
 				<constant>{"status" : "stopped"}</constant>
 			</setBody>
 		</route>
+
+		<route id="start-from-date-time-consume">
+			<from uri="direct:start-from-date-time-consume" />
+			<log message="${body.class}"></log>
+			<log message="${body.dateTime}"/>
+			<setHeader headerName="lastOffset">
+				<method ref="helper" method="offsetAtTime(${body.dateTime})"></method>
+			</setHeader>
+			<log message="${header.lastOffset} ${header.lastOffset.class}" />
+			<choice>
+			<when>
+				<simple>${header.lastOffset.getOffset()} != null</simple>
+				<setBody>
+					<constant></constant>
+				</setBody>
+				<to uri="language:simple:${bean:fromDateRepoState.setState('test/0',${header.lastOffset.getOffset()})}?transform=false" />
+				<log 	message="state is: ${bean:fromDateRepoState.getState('test/0')}" />
+				<to uri="controlbus:route?routeId=from-date-time-kafka-consumer&amp;action=start" />
+			</when>
+				<otherwise>
+					<setBody>
+						<constant>{"status" : "no offset found not start"}</constant>
+					</setBody>
+				</otherwise>
+			</choice>
+			
+
+			<setBody>
+				<constant>{"status" : "started"}</constant>
+			</setBody>
+		</route>
+		
+		<route id="stop-from-date-time-consume">
+			<from uri="direct:stop-from-date-time-consume" />
+			<setBody>
+				<constant></constant>
+			</setBody>
+			<to
+				uri="controlbus:route?routeId=from-date-time-kafka-consumer&amp;action=stop&amp;async=true" />
+			<setBody>
+				<constant>{"status" : "stopped"}</constant>
+			</setBody>
+		</route>
+
 	</camelContext>
 </beans>
