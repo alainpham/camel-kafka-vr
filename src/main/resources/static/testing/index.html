@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Messaging between Browser and Server through Websockets</title>
+    <script src="js/plotly-latest.min.js"></script>
+</head>
+<body>
+<h1>
+    Messaging between Browser and Server through WebsocketsMessaging
+</h1>
+<h2>Last message received : <span id="msg-content"> </span></h2>
+
+<div id="plot" style="width:800px;height:300px;"></div>
+<h2>Last message received : <span id="msg-content-offset"> </span></h2>
+<div id="plotOffset" style="width:800px;height:300px;"></div>
+
+
+<script>
+
+    var server = "ws://localhost:8290/camel/eventConsumed";
+    var serverOffset = "ws://localhost:8290/camel/eventOffset";
+
+    var plot = document.getElementById('plot');
+    var plotOffset = document.getElementById('plotOffset');
+
+    var socket = new WebSocket(server);
+    var socketOffset = new WebSocket(serverOffset);
+
+
+    socket.onopen = function () { console.log('Starting getting event-bus messages ......'); };
+    socketOffset.onopen = function () { console.log('Starting getting event-bus offset messages ......'); };
+
+
+
+    var receivedMsg = [];
+    var receivedMsgOffset = [];
+
+
+
+    socket.onmessage= function (msg) {
+
+        console.log(msg.data);
+
+        document.getElementById("msg-content").innerHTML = msg.data;
+
+        receivedMsg.push(msg.data);
+
+        if (receivedMsg.length > 20) {
+          receivedMsg.shift();
+        }
+
+        Plotly.update(plot, {
+          y: [receivedMsg]
+        });
+
+    };
+
+    socketOffset.onmessage= function (msg) {
+
+    console.log(msg.data);
+
+    document.getElementById("msg-content-offset").innerHTML = msg.data;
+
+    receivedMsgOffset.push(msg.data);
+
+    if (receivedMsgOffset.length > 20) {
+      receivedMsgOffset.shift();
+    }
+
+    Plotly.update(plotOffset, {
+      y: [receivedMsgOffset]
+    });
+
+    };
+
+    var style = {
+      margin: { t: 0 }
+    };
+    var data = [{
+      y: [0]
+    }];
+
+    Plotly.plot(plot, data, style);
+    Plotly.plot(plotOffset, data, style);
+
+</script>
+
+</body>
+</html>

@@ -30,6 +30,14 @@
 			</get>
 		</rest>
 		<rest path="/messageOperations">
+			<get uri="/sendRandomNumber">
+				<route>
+					<setBody>
+						<simple>random(0,100)</simple>
+					</setBody>
+					<to uri="{{kafka.endpoint.standard}}" />
+				</route>
+			</get>
 			<post uri="/sendMsg">
 				<param name="number" type="header" />
 				<route>
@@ -89,29 +97,49 @@
 			</get>
 		</rest>
 
+		<route>
+		<from uri="direct:publishToBrowser"></from>
+			<throttle timePeriodMillis="100">
+				<constant>1</constant>
+				<to uri="undertow:ws://localhost:8290/camel/eventConsumed?sendToAll=true"/>	
+				<setBody>
+					<simple>${header.kafka.OFFSET}</simple>
+				</setBody>
+				<to uri="undertow:ws://localhost:8290/camel/eventOffset?sendToAll=true"/>	
+			</throttle>
+		</route>
 
 		<route id="standard-kafka-consumer">
 			<from uri="{{kafka.endpoint.standard}}" />
 			<log
 				message="got message: ${body} time: ${bean:helper.dateFromTs(${header.kafka.TIMESTAMP})} partition: ${header.kafka.PARTITION} offset: ${header.kafka.OFFSET}" />
+			<to uri="direct:publishToBrowser"/>
 		</route>
 
 		<route autoStartup="false" id="from-start-kafka-consumer">
 			<from uri="{{kafka.endpoint.fromstart}}" />
 			<log
 				message="got message: ${body} time: ${bean:helper.dateFromTs(${header.kafka.TIMESTAMP})} partition: ${header.kafka.PARTITION} offset: ${header.kafka.OFFSET}" />
+			<to uri="direct:publishToBrowser"/>
 		</route>
 
 		<route autoStartup="false" id="from-date-time-kafka-consumer">
 			<from uri="{{kafka.endpoint.fromDateTime}}"></from>
 			<log
 				message="got message: ${body} time: ${bean:helper.dateFromTs(${header.kafka.TIMESTAMP})} partition: ${header.kafka.PARTITION} offset: ${header.kafka.OFFSET}" />
+
+			<to uri="direct:publishToBrowser"/>
+
 		</route>
 
 		<route autoStartup="false" id="reverse-kafka-consumer">
 			<from id="from-kafka" uri="{{kafka.endpoint.reverse}}" />
 			<log
 				message="got message: ${body} time: ${bean:helper.dateFromTs(${header.kafka.TIMESTAMP})} partition: ${header.kafka.PARTITION} offset: ${header.kafka.OFFSET}" />
+
+			<to uri="direct:publishToBrowser"/>
+
+
 			<setHeader headerName="kafkaMyDate" >
 				<method ref="helper"
 					method="dateFromTs(${header.kafka.TIMESTAMP})"></method>

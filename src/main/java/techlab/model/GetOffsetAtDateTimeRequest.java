@@ -13,6 +13,7 @@ public class GetOffsetAtDateTimeRequest {
     public Date getDateTime() {
         return dateTime;
     }
+    
     /**
      * @param dateTime the dateTime to set
      */

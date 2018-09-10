@@ -52,6 +52,7 @@ public class Helper {
 
 		if (offset < 1) {
 			producer.requestBody(null);
+			manual.getConsumer().unsubscribe();
 		} else {
 			manual.getConsumer().seek((TopicPartition) manual.getConsumer().assignment().toArray()[0], offset - 1);
 		}
