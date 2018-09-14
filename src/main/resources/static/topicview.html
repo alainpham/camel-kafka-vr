@@ -73,7 +73,8 @@
 
       function init()
       {
-        var ws = initWebSocket()
+        var ws = new WebSocket("ws://localhost:8290/camel/brokerReceivedEvents");
+
         
         ws.onmessage = function (evt) {
             sendMessage(evt.data);
