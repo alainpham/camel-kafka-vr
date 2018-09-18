@@ -25,7 +25,7 @@
 				</route>
 			</get>
 			<post uri="/sendMsg">
-				<param name="number" type="header" />
+				<param name="number" type="header" required="false"/>
 				<route>
 					<setBody>
 						<simple>${header.number}</simple>

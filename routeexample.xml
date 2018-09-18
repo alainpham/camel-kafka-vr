@@ -1,0 +1,9 @@
+<route id="standard-kafka-consumer">
+    <from uri="kafka:test?brokers=localhost:9092" />
+    <log message="got message: ${body} time: ${bean:helper.dateFromTs(${header.kafka.TIMESTAMP})} partition: ${header.kafka.PARTITION} offset: ${header.kafka.OFFSET}" />
+    <setBody>
+        <simple>${header.kafka.OFFSET}</simple>
+    </setBody>
+    <to uri="undertow:ws://localhost:8290/camel/topic?sendToAll=true" />
+    <to uri="undertow:ws://localhost:8290/camel/consumer?sendToAll=true" />
+</route>
