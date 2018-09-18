@@ -80,11 +80,11 @@
 			<from uri="direct:publishToBrowser"></from>
 			<throttle timePeriodMillis="500">
 				<constant>1</constant>
-				<to uri="undertow:ws://localhost:8290/camel/eventConsumed?sendToAll=true" />
+				<to uri="undertow:ws://{{server.address}}:{{wsock.port}}/camel/eventConsumed?sendToAll=true" />
 				<setBody>
 					<simple>${header.kafka.OFFSET}</simple>
 				</setBody>
-				<to uri="undertow:ws://localhost:8290/camel/eventOffset?sendToAll=true" />
+				<to uri="undertow:ws://{{server.address}}:{{wsock.port}}/camel/eventOffset?sendToAll=true" />
 			</throttle>
 		</route>
 		<route id="standard-kafka-consumer">
@@ -93,7 +93,7 @@
 			<setBody>
 				<simple>${header.kafka.OFFSET}</simple>
 			</setBody>
-			<to uri="undertow:ws://localhost:8290/camel/brokerReceivedEvents?sendToAll=true" />
+			<to uri="undertow:ws://{{server.address}}:{{wsock.port}}/camel/brokerReceivedEvents?sendToAll=true" />
 			<to uri="direct:publishToBrowser"/>
 		</route>
 		<route id="from-start-kafka-consumer" autoStartup="false">
@@ -189,6 +189,10 @@
 			<setBody>
 				<constant>{"status" : "stopped"}</constant>
 			</setBody>
+		</route>
+		<route>
+		<from uri="undertow:http://{{server.address}}:{{wsock.port}}/?matchOnUriPrefix=true"/>
+		<to uri="undertow:http://{{server.address}}:{{server.port}}"></to>
 		</route>
 	</camelContext>
 </beans>

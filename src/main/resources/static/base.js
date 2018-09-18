@@ -9,7 +9,7 @@
                
                // Let us open a web socket
                //var ws = new WebSocket("ws://localhost:9998/echo");
-               ws = new WebSocket("ws://localhost:8290/camel/eventOffset");
+               ws = new WebSocket(((window.location.protocol === 'https:') ? 'wss://' : 'ws://') + window.location.host + '/camel/eventOffset');
              //localhost:8080/myapp/mysocket
     			
                ws.onopen = function() {

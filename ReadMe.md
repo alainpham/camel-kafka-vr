@@ -35,9 +35,9 @@ For testing
 		bin/kafka-topics.sh --zookeeper localhost:2181 --delete --topic test
 
 8. Graphical view
-
-		http://localhost:8090/consumer.html
-		http://localhost:8090/topicview.html
+		http://localhost:8290/
+		http://localhost:8290/consumer.html
+		http://localhost:8290/topicview.html
     
     
     
