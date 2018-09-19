@@ -41,3 +41,6 @@ For testing
     
     
     
+
+
+curl -X POST --header "Content-Type: application/json" --header "Accept: application/json" "http://http://camel-kafka-vr-amq-streams.apps.openshift.pub/camel/messageOperations/sendMsg"

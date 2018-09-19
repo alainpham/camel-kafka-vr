@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: "${project.artifactId}"
+  name: "${project.artifactId}-svc"
   creationTimestamp:
   labels:
     app: "${project.artifactId}"
@@ -11,10 +11,10 @@ metadata:
     group: "${project.groupId}"
 spec:
   ports:
-  - name: http-svc-tcp
-    port: 8290
+  - name: http
+    port: 8080
     protocol: TCP
-    targetPort: 8290
+    targetPort: 8080
   selector:
     component: "${project.artifactId}"
     deploymentconfig: "${project.artifactId}"
