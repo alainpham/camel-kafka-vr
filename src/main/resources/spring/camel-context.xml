@@ -72,6 +72,10 @@
 			<post type="techlab.model.GetOffsetAtDateTimeRequest" uri="/startFromDateTimeConsumer">
 				<to uri="direct:start-from-date-time-consume"></to>
 			</post>
+			<post uri="/startFromOffsetConsumer">
+			<param name="lastOffset" type="header"></param>
+			<to uri="direct:start-from-offset-consume"></to>
+			</post> 
 			<get uri="/stopFromDateTimeConsumer">
 				<to uri="direct:stop-from-date-time-consume"></to>
 			</get>
@@ -180,6 +184,32 @@
 				<constant>{"status" : "started"}</constant>
 			</setBody>
 		</route>
+
+		<route id="start-from-offset-consume">
+			<from uri="direct:start-from-offset-consume" />
+			<log message="${body.class}"></log>
+			<log message="${body.dateTime}" />
+			<log message="${header.lastOffset} ${header.lastOffset.class}" />
+			<choice>
+				<when>
+					<simple>${header.lastOffset} != null</simple>
+					<setBody>
+						<constant></constant>
+					</setBody>
+					<to uri="language:simple:${bean:fromDateRepoState.setState('test/0',${header.lastOffset})}?transform=false" />
+					<log message="state is: ${bean:fromDateRepoState.getState('test/0')}" />
+					<to uri="controlbus:route?routeId=from-date-time-kafka-consumer&amp;action=start" />
+				</when>
+				<otherwise>
+					<setBody>
+						<constant>{"status" : "no offset found not start"}</constant>
+					</setBody>
+				</otherwise>
+			</choice>
+			<setBody>
+				<constant>{"status" : "started"}</constant>
+			</setBody>
+		</route>
 		<route id="stop-from-date-time-consume">
 			<from uri="direct:stop-from-date-time-consume" />
 			<setBody>
@@ -194,5 +224,7 @@
 		<from uri="undertow:http://{{server.address}}:{{wsock.port}}/?matchOnUriPrefix=true"/>
 		<to uri="undertow:http://{{server.address}}:{{server.port}}"></to>
 		</route>
+
+
 	</camelContext>
 </beans>

@@ -41,6 +41,6 @@ For testing
     
     
     
+http://camel-kafka-vr-svc-amq-streams.apps.openshift.pub/webjars/swagger-ui/2.1.0/index.html?url=/camel/api-docs#/
 
-
-curl -X POST --header "Content-Type: application/json" --header "Accept: application/json" "http://http://camel-kafka-vr-amq-streams.apps.openshift.pub/camel/messageOperations/sendMsg"
+curl -X POST --header "Content-Type: application/json" --header "Accept: application/json" "http://camel-kafka-vr-amq-streams.apps.openshift.pub/camel/messageOperations/sendMsg"
